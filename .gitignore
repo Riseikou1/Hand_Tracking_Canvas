@@ -43,3 +43,7 @@ __pycache__/
 /.wrangler/
 /outputs/
 /work/
+
+/venv
+venv
+.venv

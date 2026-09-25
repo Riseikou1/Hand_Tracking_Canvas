@@ -17,6 +17,8 @@ const eslintConfig = defineConfig([
     "public/mediapipe/**",
     "out/**",
     "build/**",
+    "venv/**",
+    ".venv/**",
     "next-env.d.ts",
   ]),
   eslint.configs.recommended,

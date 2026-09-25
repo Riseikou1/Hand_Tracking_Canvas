@@ -208,12 +208,14 @@ export default function Home() {
         minTrackingConfidence: 0.6,
       };
       let detector: HandLandmarker;
+      let activeDelegate: "GPU" | "CPU" = "GPU";
       try {
         detector = await HandLandmarker.createFromOptions(vision, {
           ...options,
           baseOptions: { modelAssetPath: model, delegate: "GPU" },
         });
       } catch {
+        activeDelegate = "CPU";
         detector = await HandLandmarker.createFromOptions(vision, {
           ...options,
           baseOptions: { modelAssetPath: model, delegate: "CPU" },
@@ -228,6 +230,15 @@ export default function Home() {
       setShowHint(false);
       setGesture("Show your hand");
       let previousVideoTime = -1;
+      const stopTracking = (error: unknown) => {
+        console.error("AirDraw hand tracking stopped.", error);
+        stopCamera();
+        setCamera("error");
+        setGesture("Tracking stopped");
+        setMessage(
+          "Hand tracking could not process the camera feed. Restart the camera, check camera permissions, or use mouse or touch drawing.",
+        );
+      };
       const track = () => {
         const currentVideo = videoRef.current;
         const landmarker = detectorRef.current;
@@ -240,13 +251,30 @@ export default function Home() {
           let result: ReturnType<HandLandmarker["detectForVideo"]>;
           try {
             result = landmarker.detectForVideo(currentVideo, performance.now());
-          } catch {
-            stopCamera();
-            setCamera("error");
-            setGesture("Tracking stopped");
-            setMessage(
-              "Hand tracking stopped unexpectedly. Restart the camera or draw with your mouse or touch.",
-            );
+          } catch (trackingError) {
+            if (activeDelegate === "GPU") {
+              console.warn("AirDraw GPU hand tracking failed; retrying on CPU.", trackingError);
+              landmarker.close();
+              detectorRef.current = null;
+              setGesture("Switching to compatibility tracking…");
+              void HandLandmarker.createFromOptions(vision, {
+                  ...options,
+                  baseOptions: { modelAssetPath: model, delegate: "CPU" },
+                }).then((cpuDetector) => {
+                if (session !== cameraSessionRef.current) {
+                  cpuDetector.close();
+                  return;
+                }
+                activeDelegate = "CPU";
+                detectorRef.current = cpuDetector;
+                setGesture("Tracking ready · show your hand");
+                frameRef.current = requestAnimationFrame(track);
+                }).catch((recoveryError: unknown) => {
+                  if (session === cameraSessionRef.current) stopTracking(recoveryError);
+                });
+              return;
+            }
+            stopTracking(trackingError);
             return;
           }
           const hand = result.landmarks[0];
@@ -396,7 +424,7 @@ export default function Home() {
     <main className="studio-shell">
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark">✳</span>airdraw
+          <span className="brand-logo" aria-hidden="true" />airdraw
           <span className="brand-dot">.</span>
         </div>
         <div className="topbar-center">A canvas made for movement</div>
