@@ -52,17 +52,11 @@ input:focus-visible {
   gap: 8px;
 }
 .brand-logo {
-  background: #26382c;
-  background-image: url("/airdraw-logo.png");
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: contain;
+  background: url("/logo-96.png") center / contain no-repeat;
   border-radius: 50%;
   width: 38px;
   height: 38px;
   margin-right: 2px;
-  padding: 5px;
-  object-fit: contain;
 }
 .brand-dot {
   color: var(--orange);
