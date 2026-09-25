@@ -29,6 +29,15 @@ const eslintConfig = defineConfig([
   jsxA11y.flatConfigs.recommended,
   next.configs["core-web-vitals"],
   {
+    // These app routes are also compiled by plain Vite for Vercel, where
+    // next/link and next/image are not installed or available.
+    files: ["app/**/*.tsx"],
+    rules: {
+      "@next/next/no-html-link-for-pages": "off",
+      "@next/next/no-img-element": "off",
+    },
+  },
+  {
     languageOptions: {
       globals: {
         ...globals.browser,

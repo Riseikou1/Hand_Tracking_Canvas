@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
 import { FilesetResolver, HandLandmarker } from "@mediapipe/tasks-vision";
 
 type Status = "off" | "loading" | "on" | "error";
@@ -105,9 +103,9 @@ export default function FingerCountPage() {
   const fingerName = count === null ? "Waiting for your hand" : count === 1 ? "One finger up" : `${count} fingers up`;
   return <main className="studio-shell">
     <header className="topbar">
-      <Link className="brand" href="/" aria-label="AirDraw home"><span className="brand-logo" aria-hidden="true"/>airdraw<span className="brand-dot">.</span></Link>
-      <nav className="topbar-center page-nav" aria-label="Main navigation"><Link href="/">Canvas</Link><Link className="current" href="/fingers">Finger count</Link></nav>
-      <Link className="top-action nav-action" href="/">Open canvas <span>↗</span></Link>
+      <a className="brand" href="/" aria-label="AirDraw home"><span className="brand-logo" aria-hidden="true"/>airdraw<span className="brand-dot">.</span></a>
+      <nav className="topbar-center page-nav" aria-label="Main navigation"><a href="/">Canvas</a><a className="current" href="/fingers">Finger count</a></nav>
+      <a className="top-action nav-action" href="/">Open canvas <span>↗</span></a>
     </header>
     <section className="intro fingers-intro"><div><p className="eyebrow">YOUR CREATIVE SPACE / 02</p><h1>Count on your <em>hands.</em></h1><p className="intro-copy">A little live experiment in hand tracking. Hold up a number and watch it appear.</p></div><div className="intro-badge"><span className="badge-orb"/> CAMERA PROCESSING IS LOCAL</div></section>
     <section className="finger-workspace">
@@ -120,7 +118,7 @@ export default function FingerCountPage() {
         </div>
         <div className="canvas-bottom"><span>✦ &nbsp; ONE HAND, FIVE FINGERS</span><span>REAL-TIME TRACKING</span></div>
       </div>
-      <aside className="finger-side-card"><div className="panel-heading"><span>02</span><h3>How many?</h3><p>Keep your hand in view, palm facing the camera. The count updates as you move.</p></div><button className="primary-button finger-start" onClick={status === "on" ? stop : start} disabled={status === "loading"}>{status === "on" ? "Stop camera" : status === "loading" ? "Starting camera…" : "Start camera"}<span>↗</span></button>{message && <p className="finger-error" role="alert">{message}</p>}<div className="finger-reference"><div className="control-label"><span>FINGER REFERENCES</span><b>0—5</b></div><div className="finger-thumbs">{[1,2,3,4,5,6].map((n)=><div className="finger-thumb" key={n}><Image src={`/finger-count/${n}.png`} alt={`${n - 1} fingers raised`} width={209} height={207}/><span>{n - 1}</span></div>)}</div></div><div className="panel-note"><span>✳</span><b>Made for the moment</b><p>Quick visual feedback, straight from the camera stream in this tab.</p></div></aside>
+      <aside className="finger-side-card"><div className="panel-heading"><span>02</span><h3>How many?</h3><p>Keep your hand in view, palm facing the camera. The count updates as you move.</p></div><button className="primary-button finger-start" onClick={status === "on" ? stop : start} disabled={status === "loading"}>{status === "on" ? "Stop camera" : status === "loading" ? "Starting camera…" : "Start camera"}<span>↗</span></button>{message && <p className="finger-error" role="alert">{message}</p>}<div className="finger-reference"><div className="control-label"><span>FINGER REFERENCES</span><b>0—5</b></div><div className="finger-thumbs">{[1,2,3,4,5,6].map((n)=><div className="finger-thumb" key={n}><img src={`/finger-count/${n}.png`} alt={`${n - 1} fingers raised`}/><span>{n - 1}</span></div>)}</div></div><div className="panel-note"><span>✳</span><b>Made for the moment</b><p>Quick visual feedback, straight from the camera stream in this tab.</p></div></aside>
     </section>
     <footer className="footer"><span>DRAW FREELY. CREATE ANYTHING.</span><span>YOUR CAMERA STAYS ON YOUR DEVICE &nbsp; · &nbsp; 2026</span></footer>
   </main>;

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { FilesetResolver, HandLandmarker } from "@mediapipe/tasks-vision";
 
 type Point = { x: number; y: number };
@@ -447,11 +446,11 @@ export default function Home() {
   return (
     <main className="studio-shell">
       <header className="topbar">
-        <Link className="brand" href="/" aria-label="AirDraw home">
+        <a className="brand" href="/" aria-label="AirDraw home">
           <span className="brand-logo" aria-hidden="true" />airdraw
           <span className="brand-dot">.</span>
-        </Link>
-        <nav className="topbar-center page-nav" aria-label="Main navigation"><Link className="current" href="/">Canvas</Link><Link href="/fingers">Finger count</Link></nav>
+        </a>
+        <nav className="topbar-center page-nav" aria-label="Main navigation"><a className="current" href="/">Canvas</a><a href="/fingers">Finger count</a></nav>
         <button className="top-action" onClick={() => setShowGuide(true)}>
           How it works <span>↗</span>
         </button>
