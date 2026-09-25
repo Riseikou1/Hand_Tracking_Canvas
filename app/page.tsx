@@ -399,13 +399,36 @@ export default function Home() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const meta = event.metaKey || event.ctrlKey;
-      if (meta && event.key.toLowerCase() === "z") {
+      const key = event.key.toLowerCase();
+      const target = event.target;
+      const typing =
+        target instanceof HTMLElement &&
+        (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+      if (typing) return;
+      if (meta && key === "z") {
         event.preventDefault();
         undo();
       }
       if (event.key === "Escape") setShowGuide(false);
-      if (event.key.toLowerCase() === "e" && !meta) chooseTool("eraser");
-      if (event.key.toLowerCase() === "b" && !meta) chooseTool("brush");
+      if (meta) return;
+      if (key === "u") undo();
+      if (key === "c") clear();
+      if (key === "s") download();
+      if (key === "e") chooseTool("eraser");
+      if (key === "b") chooseTool("brush");
+      if (key === "+" || key === "=") {
+        const value = Math.min(35, settingsRef.current.size + 1);
+        settingsRef.current = { ...settingsRef.current, size: value };
+        setSize(value);
+      }
+      if (key === "-") {
+        const value = Math.max(3, settingsRef.current.size - 1);
+        settingsRef.current = { ...settingsRef.current, size: value };
+        setSize(value);
+      }
+      if (/^[1-5]$/.test(key)) chooseColor(colors[Number(key) - 1].value);
+      if (key === "h") setShowGuide((visible) => !visible);
+      if (key === "q") stopCamera();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -711,8 +734,25 @@ export default function Home() {
                 </p>
               </div>
             </div>
+            <section className="shortcut-section" aria-labelledby="shortcut-heading">
+              <h3 id="shortcut-heading">Desktop controls</h3>
+              <div className="shortcut-table-wrap">
+                <table className="shortcut-table">
+                  <thead><tr><th>Action</th><th>Control</th></tr></thead>
+                  <tbody>
+                    <tr><td>Draw</td><td>Raise one index finger</td></tr>
+                    <tr><td>Select color or eraser</td><td>Raise index and middle fingers, then point at the top toolbar</td></tr>
+                    <tr><td>Undo / clear / save</td><td><kbd>U</kbd> / <kbd>C</kbd> / <kbd>S</kbd></td></tr>
+                    <tr><td>Change brush size</td><td><kbd>+</kbd> / <kbd>−</kbd></td></tr>
+                    <tr><td>Toggle eraser</td><td><kbd>E</kbd></td></tr>
+                    <tr><td>Select a color</td><td><kbd>1</kbd> through <kbd>5</kbd></td></tr>
+                    <tr><td>Toggle help / stop camera</td><td><kbd>H</kbd> / <kbd>Q</kbd></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
             <p className="guide-footnote">
-              No camera? Use your mouse, trackpad, or touch screen.
+              Select <b>Start drawing</b> to let your browser ask for camera access. Camera access works on HTTPS or localhost. If you blocked it earlier, change this site’s camera permission in your browser settings. No camera? Use your mouse, trackpad, or touch screen.
             </p>
             <button
               className="primary-button"
