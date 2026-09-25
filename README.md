@@ -1,42 +1,68 @@
 # AirDraw
 
-A browser based drawing studio adapted from `Virtual_Painter.py`. The web app runs hand tracking in the browser; camera frames are not uploaded to the app. It also works with a mouse, trackpad, or touch screen.
+AirDraw is a hand tracking drawing studio. Make marks with your index finger through a webcam, or draw directly with a mouse, trackpad, or touch screen. Choose colors, erase, undo, and save your work as a PNG.
 
-## Web app
+The project includes a browser app and a desktop Python version.
 
-- **One index finger:** draw.
-- **Index and middle fingers:** pause drawing. Hover over a swatch or eraser at the top of the canvas to select it.
-- **Mouse or touch:** drag directly on the canvas.
-- Adjust brush size, undo, clear, or export a white background PNG from the right panel.
-- Keyboard shortcuts: **B** brush, **E** eraser, **Ctrl/Cmd + Z** undo.
+## Run the browser app
 
-The camera needs browser permission and a secure context (HTTPS or localhost). The first camera start loads the hand tracking model. The model and runtime files are served from this project.
+**Requirements:** Node.js 22.13 or newer, npm, and a modern browser. A webcam is optional.
 
-### Run locally
-
-Use Node.js 22.13 or newer:
+From the project root:
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
-Open the local URL shown in the terminal.
+Open the local address printed in the terminal. Select **Start drawing** to allow camera access, or **Use mouse or touch instead** to draw without a camera. Browser camera access requires HTTPS or `localhost`.
 
-### Deploy to Vercel
+### Browser controls
 
-The repository also includes a static Vite build for Vercel. Import the GitHub repository and select the **Vite** preset with root directory `./`. The checked-in `vercel.json` sets the build command to `npm run build:vercel`, output directory to `dist-vercel`, and install command to `npm ci`. No environment variables are needed. The Cloudflare/Sites build remains available through `npm run build`.
+| Action | Control |
+| --- | --- |
+| Draw | Raise one index finger, or drag on the canvas |
+| Pause and select | Raise index and middle fingers; hover over a color or eraser at the top of the canvas |
+| Change brush size | Use the size slider |
+| Undo | Select **Undo** or press **Ctrl/Cmd + Z** |
+| Clear | Select **Clear canvas** |
+| Save | Select **Save as PNG** |
+| Switch tools | Press **B** for brush or **E** for eraser |
 
-## Desktop Python version
+Camera frames are processed in the browser and are not uploaded by AirDraw. The hand tracking model is loaded when you start the camera.
 
-The updated desktop version is included in `desktop/`, alongside its `HandTrackingModule.py` helper. The original source also remains at `~/Documents/Languages/PYTHON/ComputerVision/Projects/Virtual_Painter.py`. It now has a consistent toolbar, undo, clear, brush sizing, keyboard color selection, graceful camera errors, and PNG export.
+## Run the desktop app
+
+**Requirements:** Python 3.12, a webcam, and a terminal.
+
+From the project root:
 
 ```bash
-python3 -m pip install -r desktop/requirements.txt
-cd desktop
-python3 Virtual_Painter.py
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r desktop/requirements.txt
+python desktop/Virtual_Painter.py
 ```
 
-The requirements pin MediaPipe to a release compatible with the desktop hand tracking helper. Use `--camera 1` to select another camera, or `--output /path/to/folder` to change the PNG destination. The default is `~/Pictures/AirDraw`.
+On Windows, use `.venv\Scripts\Activate.ps1` in PowerShell or `.venv\Scripts\activate.bat` in Command Prompt, and use `python` in place of `python3`.
 
-In the desktop app, **one index finger** draws, **two fingers** select a color or eraser from the top bar. Press **U** undo, **C** clear, **S** save, **+/-** change size, **E** toggle eraser, **1–5** select colors, **H** toggle help, and **Q** quit.
+### Desktop controls
+
+| Action | Control |
+| --- | --- |
+| Draw | Raise one index finger |
+| Select color or eraser | Raise index and middle fingers, then point at the top toolbar |
+| Undo / clear / save | **U** / **C** / **S** |
+| Change brush size | **+** / **-** |
+| Toggle eraser | **E** |
+| Select a color | **1** through **5** |
+| Toggle help / quit | **H** / **Q** |
+
+Saved images go to `~/Pictures/AirDraw` by default. Use `--camera 1` for a different camera or `--output /path/to/folder` for a different save location. Run `python desktop/Virtual_Painter.py --help` for all options.
+
+## Project checks
+
+```bash
+npm run lint
+npm test
+```

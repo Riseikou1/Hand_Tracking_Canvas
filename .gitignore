@@ -39,6 +39,7 @@ yarn-error.log*
 *.tsbuildinfo
 __pycache__/
 *.pyc
+.venv/
 /.wrangler/
 /outputs/
 /work/
