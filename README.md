@@ -64,6 +64,7 @@ Saved images go to `~/Pictures/AirDraw` by default. Use `--camera 1` for a diffe
 
 ```bash
 npm run lint
+npm run typecheck
 npm run build
 npm test
 ```

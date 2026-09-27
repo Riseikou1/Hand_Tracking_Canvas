@@ -3,13 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FilesetResolver, HandLandmarker } from "@mediapipe/tasks-vision";
 
-type Point = { x: number; y: number };
-type Stroke = { points: Point[]; color: string; width: number; erase: boolean };
+import { W, H, appendPoint, mapPointer, mapHand, smoothHand, paintStroke, pointerSamples, type Point, type Stroke } from "./drawing";
 type Tool = "brush" | "eraser";
 type CameraState = "off" | "loading" | "on" | "error";
 
-const W = 1200;
-const H = 675;
 const colors = [
   { name: "Coral", value: "#ef6f57" },
   { name: "Blue", value: "#6385c8" },
@@ -18,34 +15,6 @@ const colors = [
   { name: "Ink", value: "#26362f" },
 ];
 const model = "/mediapipe/hand_landmarker.task";
-
-function paintSegment(
-  ctx: CanvasRenderingContext2D,
-  stroke: Stroke,
-  from: Point,
-  to: Point,
-) {
-  ctx.save();
-  ctx.globalCompositeOperation = stroke.erase
-    ? "destination-out"
-    : "source-over";
-  ctx.strokeStyle = stroke.color;
-  ctx.fillStyle = stroke.color;
-  ctx.lineWidth = stroke.width;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  if (from === to) {
-    ctx.beginPath();
-    ctx.arc(to.x, to.y, stroke.width / 2, 0, Math.PI * 2);
-    ctx.fill();
-  } else {
-    ctx.beginPath();
-    ctx.moveTo(from.x, from.y);
-    ctx.lineTo(to.x, to.y);
-    ctx.stroke();
-  }
-  ctx.restore();
-}
 
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -58,6 +27,10 @@ export default function Home() {
   const strokesRef = useRef<Stroke[]>([]);
   const activeRef = useRef<Stroke | null>(null);
   const handPointRef = useRef<Point | null>(null);
+  const handTimeRef = useRef(0);
+  const pointerIdRef = useRef<number | null>(null);
+  const paintFrameRef = useRef(0);
+  const paintedRef = useRef(0);
   const lastSelectRef = useRef(0);
   const modeRef = useRef<"pointer" | "hand" | null>(null);
   const settingsRef = useRef({
@@ -81,25 +54,56 @@ export default function Home() {
   const render = useCallback(() => {
     const ctx = canvasRef.current?.getContext("2d");
     if (!ctx) return;
-    ctx.clearRect(0, 0, W, H);
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     for (const stroke of strokesRef.current) {
-      const points = stroke.points;
-      if (!points.length) continue;
-      paintSegment(ctx, stroke, points[0], points[0]);
-      for (let i = 1; i < points.length; i++)
-        paintSegment(ctx, stroke, points[i - 1], points[i]);
+      paintStroke(ctx, stroke);
+    }
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const width = Math.max(1, Math.round(rect.width * dpr));
+      const height = Math.max(1, Math.round(rect.height * dpr));
+      if (canvas.width === width && canvas.height === height) return;
+      canvas.width = width;
+      canvas.height = height;
+      render();
+      paintedRef.current = activeRef.current?.points.length ?? 0;
+    };
+    const observer = new ResizeObserver(resize);
+    observer.observe(canvas);
+    window.addEventListener("resize", resize);
+    resize();
+    return () => { observer.disconnect(); window.removeEventListener("resize", resize); };
+  }, [render]);
+
+  const flushPaint = useCallback(() => {
+    cancelAnimationFrame(paintFrameRef.current);
+    paintFrameRef.current = 0;
+    const ctx = canvasRef.current?.getContext("2d");
+    const stroke = activeRef.current;
+    if (ctx && stroke) {
+      paintStroke(ctx, stroke, paintedRef.current);
+      paintedRef.current = stroke.points.length;
     }
   }, []);
 
   const finishStroke = useCallback(() => {
+    flushPaint();
+    pointerIdRef.current = null;
     if (activeRef.current) {
       activeRef.current = null;
       modeRef.current = null;
       setStrokeCount(strokesRef.current.length);
     }
-  }, []);
+  }, [flushPaint]);
   const finishHandStroke = useCallback(() => {
     if (modeRef.current === "hand") finishStroke();
+    handPointRef.current = null;
   }, [finishStroke]);
 
   const beginStroke = useCallback((point: Point, input: "pointer" | "hand") => {
@@ -119,28 +123,21 @@ export default function Home() {
       strokesRef.current.push(stroke);
       setStrokeCount(strokesRef.current.length);
       setShowHint(false);
-      paintSegment(ctx, stroke, point, point);
+      paintedRef.current = 0;
     } else {
-      const previous = activeRef.current.points.at(-1)!;
-      activeRef.current.points.push(point);
-      paintSegment(ctx, activeRef.current, previous, point);
+      appendPoint(activeRef.current, point);
     }
-  }, []);
+    if (!paintFrameRef.current)
+      paintFrameRef.current = requestAnimationFrame(flushPaint);
+  }, [flushPaint]);
 
-  const pointFromPointer = (
-    event: React.PointerEvent<HTMLCanvasElement>,
-  ): Point => {
+  const addPointerSamples = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (pointerIdRef.current !== event.pointerId) return;
     const rect = event.currentTarget.getBoundingClientRect();
-    return {
-      x: Math.max(
-        0,
-        Math.min(W, ((event.clientX - rect.left) / rect.width) * W),
-      ),
-      y: Math.max(
-        0,
-        Math.min(H, ((event.clientY - rect.top) / rect.height) * H),
-      ),
-    };
+    for (const sample of pointerSamples(event.nativeEvent)) {
+      const point = mapPointer(sample, rect);
+      if (point) beginStroke(point, "pointer");
+    }
   };
 
   const chooseColor = (value: string) => {
@@ -163,7 +160,6 @@ export default function Home() {
     detectorRef.current?.close();
     detectorRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
-    handPointRef.current = null;
     const cursor = document.getElementById("hand-cursor");
     if (cursor) cursor.style.opacity = "0";
     finishHandStroke();
@@ -283,12 +279,17 @@ export default function Home() {
             const middle = hand[12];
             const indexUp = index.y < hand[6].y - 0.025;
             const middleUp = middle.y < hand[10].y - 0.025;
-            const raw = { x: (1 - index.x) * W, y: index.y * H };
-            const old = handPointRef.current;
-            const point = old
-              ? { x: old.x * 0.5 + raw.x * 0.5, y: old.y * 0.5 + raw.y * 0.5 }
-              : raw;
+            const raw = mapHand(index);
+            if (!raw) { finishHandStroke(); frameRef.current = requestAnimationFrame(track); return; }
+            const now = performance.now();
+            const point = smoothHand(raw, handPointRef.current, now - handTimeRef.current);
             handPointRef.current = point;
+            handTimeRef.current = now;
+            const stage = canvasRef.current?.getBoundingClientRect();
+            const px = stage ? stage.left + (point.x / W) * stage.width : 0;
+            const py = stage ? stage.top + (point.y / H) * stage.height : 0;
+            const palette = document.querySelector(".gesture-palette")?.getBoundingClientRect();
+            const overPalette = !!stage && !!palette && px >= palette.left && px <= palette.right && py >= palette.top && py <= palette.bottom;
             const cursor = document.getElementById("hand-cursor");
             if (cursor) {
               cursor.style.left = (point.x / W) * 100 + "%";
@@ -299,14 +300,10 @@ export default function Home() {
               finishHandStroke();
               setGesture("Select mode · hover over a color");
               if (
-                point.y < 92 &&
+                overPalette &&
                 performance.now() - lastSelectRef.current > 650
               ) {
-                const stage =
-                  canvasRef.current?.parentElement?.getBoundingClientRect();
                 if (stage) {
-                  const px = stage.left + (point.x / W) * stage.width;
-                  const py = stage.top + (point.y / H) * stage.height;
                   const buttons = document.querySelectorAll<HTMLButtonElement>(
                     ".gesture-palette button",
                   );
@@ -327,14 +324,13 @@ export default function Home() {
               }
             } else if (indexUp && !middleUp) {
               setGesture("Drawing · index finger");
-              if (point.y > 90) beginStroke(point, "hand");
+              if (!overPalette) beginStroke(point, "hand");
               else finishHandStroke();
             } else {
               finishHandStroke();
               setGesture("Raise one finger to draw");
             }
           } else {
-            handPointRef.current = null;
             const cursor = document.getElementById("hand-cursor");
             if (cursor) cursor.style.opacity = "0";
             finishHandStroke();
@@ -383,13 +379,15 @@ export default function Home() {
     if (!ctx || !canvasRef.current) return;
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-    ctx.drawImage(
-      canvasRef.current,
-      0,
-      0,
-      exportCanvas.width,
-      exportCanvas.height,
-    );
+    flushPaint();
+    // Replay vectors at export resolution instead of upscaling the display bitmap.
+    const ink = document.createElement("canvas");
+    ink.width = W * 2;
+    ink.height = H * 2;
+    const inkCtx = ink.getContext("2d");
+    if (!inkCtx) return;
+    for (const stroke of strokesRef.current) paintStroke(inkCtx, stroke);
+    ctx.drawImage(ink, 0, 0);
     const link = document.createElement("a");
     link.download = "airdraw-creation.png";
     link.href = exportCanvas.toDataURL("image/png");
@@ -437,6 +435,7 @@ export default function Home() {
     () => () => {
       cameraSessionRef.current += 1;
       cancelAnimationFrame(frameRef.current);
+      cancelAnimationFrame(paintFrameRef.current);
       streamRef.current?.getTracks().forEach((track) => track.stop());
       detectorRef.current?.close();
     },
@@ -543,20 +542,25 @@ export default function Home() {
               className="drawing-canvas"
               aria-label="Drawing canvas. Drag to draw."
               onPointerDown={(event) => {
+                if (event.button !== 0 || pointerIdRef.current !== null || modeRef.current === "hand") return;
+                const point = mapPointer(event, event.currentTarget.getBoundingClientRect());
+                if (!point) return;
                 event.currentTarget.setPointerCapture(event.pointerId);
-                beginStroke(pointFromPointer(event), "pointer");
+                pointerIdRef.current = event.pointerId;
+                beginStroke(point, "pointer");
               }}
-              onPointerMove={(event) => {
-                if (
-                  event.buttons ||
-                  (event.pointerType === "touch" &&
-                    event.currentTarget.hasPointerCapture(event.pointerId))
-                )
-                  beginStroke(pointFromPointer(event), "pointer");
+              onPointerMove={addPointerSamples}
+              onPointerUp={(event) => {
+                if (pointerIdRef.current !== event.pointerId) return;
+                addPointerSamples(event);
+                finishStroke();
               }}
-              onPointerUp={finishStroke}
-              onPointerCancel={finishStroke}
-              onLostPointerCapture={finishStroke}
+              onPointerCancel={(event) => {
+                if (pointerIdRef.current === event.pointerId) finishStroke();
+              }}
+              onLostPointerCapture={(event) => {
+                if (pointerIdRef.current === event.pointerId) finishStroke();
+              }}
             />
             <div id="hand-cursor" className="hand-cursor" />
             {showHint && (

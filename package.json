@@ -10,7 +10,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "npm run build && node --test tests/*.test.mjs",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",
