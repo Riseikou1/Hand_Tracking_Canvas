@@ -13,11 +13,6 @@
 # testing
 /coverage
 
-# next.js
-/.next/
-/.vinext/
-/out/
-
 # misc
 .DS_Store
 *.pem
@@ -35,15 +30,10 @@ yarn-error.log*
 .vercel
 
 /dist/
-/dist-vercel/
 *.tsbuildinfo
 __pycache__/
 *.pyc
 .venv/
-/.wrangler/
+venv/
 /outputs/
 /work/
-
-/venv
-venv
-.venv

@@ -15,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-Open the local address printed in the terminal. Select **Start drawing** to allow camera access, or **Use mouse or touch instead** to draw without a camera. Browser camera access requires HTTPS or `localhost`.
+Open the local address printed in the terminal. The Vite app serves both `/` and `/fingers`; either route can be opened directly or refreshed. Select **Start drawing** to allow camera access, or **Use mouse or touch instead** to draw without a camera. Browser camera access requires HTTPS or `localhost`.
 
 ### Browser controls
 
@@ -64,5 +64,8 @@ Saved images go to `~/Pictures/AirDraw` by default. Use `--camera 1` for a diffe
 
 ```bash
 npm run lint
+npm run build
 npm test
 ```
+
+Vercel uses the same Vite production build as local development. Its project configuration runs `npm run build` and publishes `dist/`; the SPA rewrite serves the app entry for both `/` and `/fingers`. MediaPipe model and WASM files are copied from `public/mediapipe/` into the production output.
