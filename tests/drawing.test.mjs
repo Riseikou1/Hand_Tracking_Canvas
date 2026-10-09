@@ -5,7 +5,7 @@ import ts from 'typescript';
 
 const source = await readFile(new URL('../app/drawing.ts', import.meta.url), 'utf8');
 const js = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
-const { W, H, mapPointer, mapHand, smoothHand, appendPoint, pointerSamples, paintStroke } = await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`);
+const { W, H, mapPointer, mapHand, smoothHand, fingerRaised, appendPoint, pointerSamples, paintStroke } = await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`);
 
 function context(width = W, height = H) {
   const calls = [];
@@ -78,14 +78,15 @@ test('dots, connected suffixes, round joins, and eraser replay use identical geo
 
 test('responsive bitmap mapping preserves edge coordinates and circular brushes at DPR 2', () => {
   const ctx = context(600, 900);
+  ctx.canvas.clientWidth = 300;
   paintStroke(ctx, stroke([{ x: W, y: H }]));
-  assert.deepEqual(ctx.calls.find(c => c[0] === 'arc').slice(1, 4), [600, 900, 2.5]);
+  assert.deepEqual(ctx.calls.find(c => c[0] === 'arc').slice(1, 4), [600, 900, 10]);
   const exportCtx = context(W * 2, H * 2);
   paintStroke(exportCtx, stroke([{ x: W, y: H }]));
   assert.deepEqual(exportCtx.calls.find(c => c[0] === 'arc').slice(1, 4), [W * 2, H * 2, 10]);
 });
 
-test('a long stroke paints only new samples per frame rather than replaying its history', () => {
+test('a long stroke paints only new samples per input batch rather than replaying its history', () => {
   const s = stroke(Array.from({ length: 100000 }, (_, i) => ({ x: i, y: i % H })));
   const ctx = context();
   paintStroke(ctx, s, 99990);
@@ -106,4 +107,11 @@ test('a long stroke paints only new samples per frame rather than replaying its 
   const once = smoothHand({ x: 1, y: 0 }, { x: 0, y: 0 }, 16);
   const twice = smoothHand({ x: 1, y: 0 }, still, 8);
   assert.ok(Math.abs(once.x - twice.x) < 1e-9);
+});
+
+test('finger gesture hysteresis keeps a raised finger through threshold noise', () => {
+  assert.equal(fingerRaised(0.50, 0.53, false), true);
+  assert.equal(fingerRaised(0.51, 0.53, true), true);
+  assert.equal(fingerRaised(0.51, 0.53, false), false);
+  assert.equal(fingerRaised(0.526, 0.53, true), false);
 });

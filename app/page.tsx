@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FilesetResolver, HandLandmarker } from "@mediapipe/tasks-vision";
 
-import { W, H, appendPoint, mapPointer, mapHand, smoothHand, paintStroke, pointerSamples, type Point, type Stroke } from "./drawing";
+import { W, H, appendPoint, mapPointer, mapHand, smoothHand, fingerRaised, paintStroke, pointerSamples, type Point, type Stroke } from "./drawing";
 type Tool = "brush" | "eraser";
 type CameraState = "off" | "loading" | "on" | "error";
 
@@ -28,8 +28,10 @@ export default function Home() {
   const activeRef = useRef<Stroke | null>(null);
   const handPointRef = useRef<Point | null>(null);
   const handTimeRef = useRef(0);
+  const indexRaisedRef = useRef(false);
+  const middleRaisedRef = useRef(false);
+  const middleCandidateRef = useRef(0);
   const pointerIdRef = useRef<number | null>(null);
-  const paintFrameRef = useRef(0);
   const paintedRef = useRef(0);
   const lastSelectRef = useRef(0);
   const modeRef = useRef<"pointer" | "hand" | null>(null);
@@ -82,8 +84,6 @@ export default function Home() {
   }, [render]);
 
   const flushPaint = useCallback(() => {
-    cancelAnimationFrame(paintFrameRef.current);
-    paintFrameRef.current = 0;
     const ctx = canvasRef.current?.getContext("2d");
     const stroke = activeRef.current;
     if (ctx && stroke) {
@@ -127,9 +127,7 @@ export default function Home() {
     } else {
       appendPoint(activeRef.current, point);
     }
-    if (!paintFrameRef.current)
-      paintFrameRef.current = requestAnimationFrame(flushPaint);
-  }, [flushPaint]);
+  }, []);
 
   const addPointerSamples = (event: React.PointerEvent<HTMLCanvasElement>) => {
     if (pointerIdRef.current !== event.pointerId) return;
@@ -138,6 +136,7 @@ export default function Home() {
       const point = mapPointer(sample, rect);
       if (point) beginStroke(point, "pointer");
     }
+    flushPaint();
   };
 
   const chooseColor = (value: string) => {
@@ -163,6 +162,9 @@ export default function Home() {
     const cursor = document.getElementById("hand-cursor");
     if (cursor) cursor.style.opacity = "0";
     finishHandStroke();
+    indexRaisedRef.current = false;
+    middleRaisedRef.current = false;
+    middleCandidateRef.current = 0;
     setCamera("off");
     setGesture("Camera off");
   }, [finishHandStroke]);
@@ -175,9 +177,12 @@ export default function Home() {
     setCamera("loading");
     setGesture("Starting camera…");
     let stream: MediaStream | null = null;
+    let cameraPhase: "permission" | "preview" | "tracking" = "permission";
     try {
+      if (!window.isSecureContext)
+        throw new Error("Camera requires HTTPS or localhost. A phone opening the dev server over a plain HTTP LAN address cannot request camera access.");
       if (!navigator.mediaDevices?.getUserMedia)
-        throw new Error("This browser cannot access a camera.");
+        throw new Error("This browser does not support camera access in this page.");
       stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "user",
@@ -194,7 +199,9 @@ export default function Home() {
       const video = videoRef.current;
       if (!video) throw new Error("Camera preview is unavailable.");
       video.srcObject = stream;
+      cameraPhase = "preview";
       await video.play();
+      cameraPhase = "tracking";
       const vision = await FilesetResolver.forVisionTasks("/mediapipe");
       if (session !== cameraSessionRef.current) return;
       const options = {
@@ -277,8 +284,12 @@ export default function Home() {
           if (hand) {
             const index = hand[8];
             const middle = hand[12];
-            const indexUp = index.y < hand[6].y - 0.025;
-            const middleUp = middle.y < hand[10].y - 0.025;
+            const indexUp = fingerRaised(index.y, hand[6].y, indexRaisedRef.current);
+            indexRaisedRef.current = indexUp;
+            const middleDetected = fingerRaised(middle.y, hand[10].y, middleRaisedRef.current);
+            middleCandidateRef.current = middleDetected ? middleCandidateRef.current + 1 : 0;
+            const middleUp = middleDetected && (middleRaisedRef.current || middleCandidateRef.current >= 2);
+            middleRaisedRef.current = middleUp;
             const raw = mapHand(index);
             if (!raw) { finishHandStroke(); frameRef.current = requestAnimationFrame(track); return; }
             const now = performance.now();
@@ -324,13 +335,16 @@ export default function Home() {
               }
             } else if (indexUp && !middleUp) {
               setGesture("Drawing · index finger");
-              if (!overPalette) beginStroke(point, "hand");
+              if (!overPalette) { beginStroke(point, "hand"); flushPaint(); }
               else finishHandStroke();
             } else {
               finishHandStroke();
               setGesture("Raise one finger to draw");
             }
           } else {
+            indexRaisedRef.current = false;
+            middleRaisedRef.current = false;
+            middleCandidateRef.current = 0;
             const cursor = document.getElementById("hand-cursor");
             if (cursor) cursor.style.opacity = "0";
             finishHandStroke();
@@ -349,11 +363,15 @@ export default function Home() {
       if (videoRef.current) videoRef.current.srcObject = null;
       setCamera("error");
       setGesture("Camera unavailable");
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "Camera or hand tracking could not start. You can still draw with your mouse or touch.",
-      );
+      const name = error instanceof Error ? error.name : "";
+      if (name === "NotAllowedError" && cameraPhase === "permission")
+        setMessage("Camera permission was denied or blocked for this page. Allow camera access in your browser's site settings, then try again. If this page is embedded, open it directly or allow camera access in the frame.");
+      else if (name === "NotFoundError")
+        setMessage("No camera was found. Connect or enable a camera, then try again.");
+      else if (name === "NotReadableError")
+        setMessage("The camera is unavailable to this browser. Close other apps using it, then try again.");
+      else
+        setMessage(error instanceof Error ? error.message : "Camera or hand tracking could not start. You can still draw with your mouse or touch.");
     } finally {
       cameraStartingRef.current = false;
     }
@@ -435,7 +453,6 @@ export default function Home() {
     () => () => {
       cameraSessionRef.current += 1;
       cancelAnimationFrame(frameRef.current);
-      cancelAnimationFrame(paintFrameRef.current);
       streamRef.current?.getTracks().forEach((track) => track.stop());
       detectorRef.current?.close();
     },
@@ -548,6 +565,7 @@ export default function Home() {
                 event.currentTarget.setPointerCapture(event.pointerId);
                 pointerIdRef.current = event.pointerId;
                 beginStroke(point, "pointer");
+                flushPaint();
               }}
               onPointerMove={addPointerSamples}
               onPointerUp={(event) => {

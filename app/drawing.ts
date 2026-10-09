@@ -19,6 +19,12 @@ export function mapHand(point: Point): Point | null {
   return Number.isFinite(mapped.x) && Number.isFinite(mapped.y) ? mapped : null;
 }
 
+// Landmark positions fluctuate around a threshold. Use a wider release
+// threshold so one noisy frame does not split an otherwise continuous stroke.
+export function fingerRaised(tipY: number, jointY: number, wasRaised: boolean): boolean {
+  return tipY < jointY - (wasRaised ? 0.005 : 0.025);
+}
+
 // A short, time-based filter calms stationary tracking without the old
 // half-frame blend lag during fast movement. Reset it between gestures.
 export function smoothHand(raw: Point, previous: Point | null, elapsedMs: number): Point {
@@ -55,7 +61,9 @@ export function paintStroke(ctx: CanvasRenderingContext2D, stroke: Stroke, start
   ctx.globalCompositeOperation = stroke.erase ? 'destination-out' : 'source-over';
   ctx.strokeStyle = stroke.color;
   ctx.fillStyle = stroke.color;
-  ctx.lineWidth = stroke.width * Math.min(sx, sy);
+  // The size control is in CSS pixels. Keep its visual width independent of
+  // the responsive stage shape, including on narrow phones.
+  ctx.lineWidth = stroke.width * (ctx.canvas.width / (ctx.canvas.clientWidth || W));
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.beginPath();

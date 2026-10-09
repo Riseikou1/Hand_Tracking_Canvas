@@ -15,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-Open the local address printed in the terminal. The Vite app serves both `/` and `/fingers`; either route can be opened directly or refreshed. Select **Start drawing** to allow camera access, or **Use mouse or touch instead** to draw without a camera. Browser camera access requires HTTPS or `localhost`.
+Open the local address printed in the terminal. The Vite app serves both `/` and `/fingers`; either route can be opened directly or refreshed. Select **Start drawing** to allow camera access, or **Use mouse or touch instead** to draw without a camera. Browser camera access requires HTTPS or `localhost`. A phone opening the Vite LAN address over plain HTTP cannot request camera permission; use an HTTPS deployment or an HTTPS local tunnel for phone camera testing.
 
 ### Browser controls
 
