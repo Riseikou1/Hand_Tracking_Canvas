@@ -15,7 +15,15 @@ export function mapPointer(point: { clientX: number; clientY: number }, rect: Re
 }
 
 export function mapHand(point: Point): Point | null {
-  const mapped = { x: (1 - point.x) * W, y: point.y * H };
+  // Most hands cannot comfortably reach the frame boundary. Map the central
+  // 84% of the camera image to the canvas, leaving overscan outside it so a
+  // stroke can enter and leave naturally instead of sticking to an edge.
+  const reach = 0.08;
+  const span = 1 - reach * 2;
+  const mapped = {
+    x: ((1 - point.x - reach) / span) * W,
+    y: ((point.y - reach) / span) * H,
+  };
   return Number.isFinite(mapped.x) && Number.isFinite(mapped.y) ? mapped : null;
 }
 

@@ -67,7 +67,9 @@ export default function Home() {
     if (!canvas) return;
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
+      // Cap bitmap work on high-density phones. The strokes are vectors and
+      // are replayed separately at full resolution when exported.
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
       const width = Math.max(1, Math.round(rect.width * dpr));
       const height = Math.max(1, Math.round(rect.height * dpr));
       if (canvas.width === width && canvas.height === height) return;
@@ -186,8 +188,9 @@ export default function Home() {
       stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "user",
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          frameRate: { ideal: 30, max: 30 },
         },
         audio: false,
       });
@@ -245,7 +248,13 @@ export default function Home() {
       const track = () => {
         const currentVideo = videoRef.current;
         const landmarker = detectorRef.current;
-        if (!currentVideo || !landmarker || !streamRef.current) return;
+        if (!currentVideo || !landmarker || !streamRef.current || session !== cameraSessionRef.current) return;
+        // A pointer stroke takes priority over synchronous model inference.
+        // This keeps touch and pen input responsive while the camera is open.
+        if (modeRef.current === "pointer") {
+          frameRef.current = requestAnimationFrame(track);
+          return;
+        }
         if (
           currentVideo.readyState >= 2 &&
           currentVideo.currentTime !== previousVideoTime
@@ -496,7 +505,8 @@ export default function Home() {
             onClick={() => chooseTool("brush")}
             className={"tool " + (tool === "brush" ? "selected" : "")}
           >
-            ✎
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m4 20 4.5-1 10.6-10.6a2.1 2.1 0 0 0-3-3L5.5 16Z"/><path d="m14.7 6.8 2.5 2.5"/></svg>
+            <span>Brush</span>
           </button>
           <button
             title="Eraser (E)"
@@ -505,9 +515,10 @@ export default function Home() {
             onClick={() => chooseTool("eraser")}
             className={"tool " + (tool === "eraser" ? "selected" : "")}
           >
-            ▱
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m4.5 15.5 9.7-10a2 2 0 0 1 2.8 0l3 3a2 2 0 0 1 0 2.8l-7.7 7.7H8Z"/><path d="M10 10 16 16M12.3 19H21"/></svg>
+            <span>Eraser</span>
           </button>
-          <span className="rail-divider" />
+          <span className="rail-divider" aria-hidden="true" />
           {colors.map((item) => (
             <button
               key={item.value}
@@ -530,6 +541,9 @@ export default function Home() {
               {camera === "on" ? "CAMERA CONNECTED" : "LIVE CANVAS"}
             </span>
             <span>01 / UNTITLED CANVAS</span>
+            <button className="mobile-camera-toggle" onClick={camera === "on" ? stopCamera : startCamera} disabled={camera === "loading"}>
+              <span className={"camera-light " + camera} /> {camera === "on" ? "Stop camera" : camera === "loading" ? "Connecting" : "Use camera"}
+            </button>
           </div>
           <div className="canvas-stage">
             <div className="gesture-palette">
@@ -580,7 +594,7 @@ export default function Home() {
                 if (pointerIdRef.current === event.pointerId) finishStroke();
               }}
             />
-            <div id="hand-cursor" className="hand-cursor" />
+            <div id="hand-cursor" className="hand-cursor" aria-hidden="true" />
             {showHint && (
               <div className="canvas-placeholder">
                 <div className="canvas-spark">✳</div>

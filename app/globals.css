@@ -186,6 +186,9 @@ input:focus-visible {
   background: #263a2c;
   color: #fff;
 }
+.tool svg { width: 23px; height: 23px; display: block; }
+.tool span { display: none; }
+.mobile-camera-toggle { display: none; }
 .rail-divider {
   height: 1px;
   width: 29px;
@@ -202,6 +205,7 @@ input:focus-visible {
 .swatch.active {
   box-shadow: 0 0 0 2px #273a2c;
 }
+.swatch:hover { transform: scale(1.08); }
 .canvas-card {
   display: flex;
   flex-direction: column;
@@ -786,8 +790,8 @@ input:focus-visible {
   .canvas-bottom {
     padding: 0 13px;
   }
-  .canvas-top span:last-child,
-  .canvas-bottom span:last-child {
+  .canvas-top > span:last-child,
+  .canvas-bottom > span:last-child {
     display: none;
   }
   .side-panel {
@@ -880,4 +884,122 @@ input:focus-visible {
   .video-preview {
     height: 150px;
   }
+}
+
+/* The canvas is the main control on a phone: tools stay directly above it,
+   with generous touch targets and the camera controls within easy reach. */
+@media (max-width: 700px) {
+  :root { --paper: #f3f5ef; --line: #dfe5dc; }
+  body { font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .studio-shell { padding: 0 max(14px, env(safe-area-inset-right)) 0 max(14px, env(safe-area-inset-left)); }
+  .topbar {
+    height: auto;
+    min-height: 106px;
+    padding: 13px 0 9px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    row-gap: 11px;
+    border-bottom-color: #dce3d9;
+  }
+  .brand { font-size: 25px; letter-spacing: -1.5px; }
+  .brand-logo { width: 34px; height: 34px; }
+  .topbar .top-action { grid-column: 2; grid-row: 1; padding: 9px 13px; box-shadow: none; }
+  .topbar .top-action span { margin-left: 4px; }
+  .topbar-center.page-nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: start;
+    gap: 5px;
+    padding: 3px;
+    background: #e9eee6;
+    border-radius: 999px;
+    font-size: 12px;
+  }
+  .page-nav a { padding: 7px 13px; border-radius: 999px; }
+  .page-nav a.current { background: white; box-shadow: 0 1px 4px #17312313; }
+  .intro { min-height: 0; padding: 26px 2px 22px; }
+  .eyebrow { font-size: 9px; letter-spacing: 1.7px; margin-bottom: 11px; }
+  .intro h1 { font-size: clamp(38px, 10.4vw, 55px); letter-spacing: -2.8px; line-height: 1.02; max-width: 650px; }
+  .intro-copy { margin-top: 11px; font-size: 13px; line-height: 1.45; max-width: 420px; }
+  .workspace { gap: 10px; }
+  .rail, .canvas-card, .side-panel, .finger-main-card, .finger-side-card { border-radius: 18px; box-shadow: 0 4px 22px #2340310a; }
+  .rail {
+    order: 0;
+    height: 64px;
+    padding: 8px 9px;
+    justify-content: space-between;
+    gap: 3px;
+    overflow: hidden;
+  }
+  .rail-label { display: none; }
+  .tool { flex: 0 0 43px; width: 43px; height: 43px; display: grid; place-items: center; border-radius: 11px; }
+  .tool svg { width: 21px; height: 21px; }
+  .tool.selected { background: #223d2c; box-shadow: 0 4px 9px #223d2c27; }
+  .rail-divider { height: 26px; width: 1px; margin: 0 3px; flex: none; }
+  .swatch { flex: 0 1 42px; width: 42px; height: 42px; padding: 9px; background-clip: content-box !important; border: 0; box-shadow: none; transition: transform 120ms ease; }
+  .swatch.active { box-shadow: inset 0 0 0 1.5px #263a2c; }
+  .canvas-card { order: 1; height: clamp(450px, 67svh, 680px); }
+  .canvas-top { height: 45px; padding: 0 15px; font-size: 9px; letter-spacing: 1px; }
+  .canvas-top > span:nth-child(2) { display: none; }
+  .canvas-top > span:first-child { display: inline-flex; align-items: center; white-space: nowrap; }
+  .mobile-camera-toggle { display: inline-flex; align-items: center; gap: 7px; border: 1px solid #dfe7dd; border-radius: 999px; padding: 7px 10px; background: #f4f7f2; color: #2d4934; font-size: 10px; font-weight: 750; letter-spacing: 0; white-space: nowrap; }
+  .canvas-stage { min-height: 0; background-size: 17px 17px; }
+  .gesture-palette { top: 12px; gap: 6px; padding: 7px 9px; max-width: calc(100% - 20px); }
+  .gesture-palette span { display: none; }
+  .gesture-palette button { width: 25px; height: 25px; flex: none; }
+  .canvas-bottom { height: 37px; padding: 0 15px; }
+  .canvas-bottom span:first-child { display: none; }
+  .canvas-bottom span:last-child { display: inline; color: #718276; font-size: 9px; }
+  .canvas-placeholder { padding: 25px 16px 12px; }
+  .canvas-spark { font-size: 39px; }
+  .canvas-placeholder h2 { font-size: clamp(24px, 6.3vw, 30px); letter-spacing: -1px; margin-top: 11px; }
+  .canvas-placeholder p { margin: 9px 0 18px; font-size: 12px; }
+  .canvas-placeholder p br { display: none; }
+  .primary-button { border-radius: 10px; }
+  .quiet-link { margin-top: 13px; }
+  .side-panel {
+    order: 2;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+    padding: 18px;
+  }
+  .panel-heading, .control-block, .actions, .camera-control, .video-preview { grid-column: 1; }
+  .panel-heading span { display: none; }
+  .panel-heading h3 { margin: 0 0 3px; font-size: 21px; }
+  .panel-heading p { font-size: 12px; }
+  .control-block { padding-top: 15px; border-top: 1px solid #e9eee6; }
+  .control-block input { height: 25px; margin: 10px 0 1px; }
+  .actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+  .actions button { min-height: 63px; flex-direction: column; justify-content: center; gap: 2px; padding: 8px 4px; border: 1px solid #e3eae1; border-radius: 11px; background: #f8faf7; font-size: 20px; text-align: center; }
+  .actions button span { font-size: 11px; line-height: 1.15; }
+  .actions small { display: none; }
+  .camera-control { min-height: 49px; padding: 9px 12px; }
+  .camera-control button { min-height: 33px; padding: 6px 14px; font-weight: 700; }
+  .video-preview { height: 128px; }
+  .video-preview div { font-size: 11px; }
+  .footer { padding: 21px 2px 35px; }
+  .footer span:last-child { display: none; }
+  .guide-modal { padding: 28px 20px; border-radius: 17px; }
+  .guide-modal h2 { font-size: 32px; }
+  .finger-workspace { gap: 10px; }
+  .finger-hero { min-height: 620px; display: flex; flex-direction: column; justify-content: space-evenly; gap: 18px; padding: 34px 20px 70px; }
+  .finger-hero:before { width: 320px; height: 320px; top: 30px; }
+  .finger-hero:after { width: 410px; height: 410px; top: -16px; }
+  .finger-number-wrap { position: relative; left: auto; top: auto; transform: none; }
+  .finger-number { font-size: 135px; }
+  .live-preview { position: relative; right: auto; top: auto; transform: none; width: min(100%, 330px); border-width: 6px; }
+  .fps-pill { right: 22px; bottom: 17px; padding: 8px 12px; }
+  .fps-pill b { font-size: 20px; }
+  .finger-side-card { padding: 18px; gap: 16px; }
+  .finger-side-card .panel-heading span { display: block; }
+}
+@media (max-width: 360px) {
+  .studio-shell { padding-left: 10px; padding-right: 10px; }
+  .topbar .top-action { font-size: 11px; padding: 8px 10px; }
+  .rail { padding: 6px; }
+  .tool { flex-basis: 39px; width: 39px; height: 39px; }
+  .swatch { flex-basis: 38px; width: 38px; height: 38px; padding: 8px; }
+  .gesture-palette button { width: 22px; height: 22px; }
+  .finger-hero { min-height: 570px; }
 }

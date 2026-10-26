@@ -34,11 +34,19 @@ test('outside movement is not clamped into artificial border strokes; invalid ge
   assert.equal(mapPointer({ clientX: NaN, clientY: 0 }, rect), null);
 });
 
-test('hand mapping mirrors horizontal positions and retains valid top and outside input', () => {
-  assert.deepEqual(mapHand({ x: 0, y: 0 }), { x: W, y: 0 });
-  assert.deepEqual(mapHand({ x: 1, y: 1 }), { x: 0, y: H });
+test('hand mapping reaches canvas edges before the camera edges and keeps overscan', () => {
+  for (const [input, expected] of [
+    [{ x: 0.08, y: 0.08 }, { x: W, y: 0 }],
+    [{ x: 0.92, y: 0.92 }, { x: 0, y: H }],
+    [{ x: 0.5, y: 0.5 }, { x: W / 2, y: H / 2 }],
+  ]) {
+    const mapped = mapHand(input);
+    assert.ok(Math.abs(mapped.x - expected.x) < 1e-9);
+    assert.ok(Math.abs(mapped.y - expected.y) < 1e-9);
+  }
   assert.equal(mapHand({ x: Infinity, y: 0 }), null);
-  assert.ok(mapHand({ x: -0.1, y: 0 }).x > W);
+  assert.ok(mapHand({ x: 0, y: 0 }).x > W);
+  assert.ok(mapHand({ x: 1, y: 1 }).x < 0);
 });
 
 test('coalesced samples preserve order and include the release endpoint with a fallback', () => {
